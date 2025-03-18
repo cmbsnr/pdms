@@ -1,0 +1,3 @@
+# Time-averaged data for fix avg
+# TimeStep c_rg v_d_end
+10000000 40.2962 122.079

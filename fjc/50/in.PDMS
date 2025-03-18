@@ -1,0 +1,66 @@
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units           real
+dimension       3
+boundary        p p p
+atom_style      full
+
+# 读取包含PDMS分子结构的data文件
+read_data       PDMS_50.data
+
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+pair_coeff          * * 0 5.1 12.0
+
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style      harmonic
+bond_coeff      1 27.486 4.48
+# angle_style     harmonic
+# angle_coeff 1 10.96 86.0
+# dihedral_style  harmonic
+# dihedral_coeff 1 1  0.3346  1  1.18
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 100
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+minimize        1.0e-4 1.0e-6 1000 10000
+
+fix             equil all nvt temp 300.0 300.0 100.0
+timestep        1
+run             500000
+unfix           equil
+
+# -----------------------------------------------------
+# 5. 计算均方回转半径
+# -----------------------------------------------------
+# 使用compute gyration命令计算整个体系的回转半径
+fix             equil all nvt temp 300.0 300.0 100.0
+variable        d_end equal "sqrt((x[1]-x[50])^2 + (y[1]-y[50])^2 + (z[1]-z[50])^2)"
+compute         rg all gyration
+fix             avg all ave/time 1000 500 1000000 c_rg v_d_end file avg.txt
+# 输出热力学信息及回转半径数据，每隔1000步输出一次
+thermo_style    custom step temp pe ke etotal c_rg v_d_end
+thermo          10000
+# 输出轨迹文件，便于后续可视化与分析
+dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
+# 运行模拟，记录回转半径数据（后续可统计分析均值与波动）
+run             1000000
+unfix           equil
+# -----------------------------------------------------
+# 6. 数据输出
+# -----------------------------------------------------
+
+
+# 写出最终体系数据文件
+write_data      pdms_out.data
