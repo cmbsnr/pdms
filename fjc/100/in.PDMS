@@ -20,7 +20,7 @@ neigh_modify    delay 0 every 1 check yes
 minimize        1.0e-4 1.0e-6 1000 10000
 
 fix             equil all nvt temp 300.0 300.0 100.0
-timestep        50
+timestep        10
 thermo_style    one
 thermo          10000
 run             50000
@@ -30,14 +30,14 @@ unfix           equil
 fix             prod all nve
 variable        d_end equal "sqrt((x[1]-x[100])^2 + (y[1]-y[100])^2 + (z[1]-z[100])^2)"
 compute         rg all gyration
-fix             avg all ave/time 1000 800 1000000 c_rg v_d_end file avg.txt
+fix             avg all ave/time 2000000 800 2000000000 c_rg v_d_end file avg.txt
 
 thermo_style    custom step temp pe ke etotal c_rg v_d_end
-thermo          10000
+thermo          2000000
 
-dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
+dump            traj all custom 2000000 dump.pdms.lammpstrj id type x y z
 
-run             1000000
+run             2000000000
 unfix           prod
 
 write_data      pdms_out.data

@@ -1,0 +1,302 @@
+LAMMPS (29 Aug 2024 - Update 1)
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p p
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           PDMS.data
+Reading data file ...
+  orthogonal box = (-62.5047 -62.5047 -62.5047) to (62.5047 62.5047 62.5047)
+  2 by 2 by 2 MPI processor grid
+  reading atoms ...
+  14850 atoms
+  reading velocities ...
+  14850 velocities
+  scanning bonds ...
+  1 = max bonds/atom
+  scanning angles ...
+  1 = max angles/atom
+  scanning dihedrals ...
+  1 = max dihedrals/atom
+  orthogonal box = (-62.5047 -62.5047 -62.5047) to (62.5047 62.5047 62.5047)
+  2 by 2 by 2 MPI processor grid
+  reading bonds ...
+  14553 bonds
+  reading angles ...
+  14256 angles
+  reading dihedrals ...
+  13959 dihedrals
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     2 = max # of 1-3 neighbors
+     4 = max # of 1-4 neighbors
+     6 = max # of special neighbors
+  special bonds CPU = 0.002 seconds
+  read_data CPU = 0.163 seconds
+
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut 12.0
+pair_coeff          * * 0.7337 5.1
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+bond_coeff          1 13.243 4.48
+angle_style         harmonic
+angle_coeff         1 5.48 86.0
+dihedral_style      harmonic
+dihedral_coeff      1 0.3346  1  1
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 100
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+minimize        1.0e-4 1.0e-6 1000 10000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 100, page size: 100000
+  master list distance cutoff = 13
+  ghost atom cutoff = 13
+  binsize = 6.5, bins = 20 20 20
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+WARNING: Inconsistent image flags (../domain.cpp:1051)
+Per MPI rank memory allocation (min/avg/max) = 8.502 | 8.504 | 8.505 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   3006253.6     -49858.65       11890.157      1.3302498e+08  3113211.3    
+        65   3006253.6     -55330.194      6165.0929      1.3301378e+08  3111873      
+Loop time of 0.137834 on 8 procs for 65 steps with 14850 atoms
+
+100.0% CPU use with 8 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     -37968.4922874218  -49161.2350167295  -49165.1007582212
+  Force two-norm initial, final = 766.80949 20.10284
+  Force max component initial, final = 23.685769 4.5112651
+  Final line search alpha, max atom move = 0.011646078 0.052538543
+  Iterations, force evaluations = 65 79
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.066169   | 0.072042   | 0.074918   |   1.0 | 52.27
+Bond    | 0.014794   | 0.016285   | 0.017233   |   0.6 | 11.82
+Neigh   | 0.018099   | 0.018137   | 0.01817    |   0.0 | 13.16
+Comm    | 0.021896   | 0.02575    | 0.033105   |   2.1 | 18.68
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.00562    |            |       |  4.08
+
+Nlocal:        1856.25 ave        1873 max        1830 min
+Histogram: 1 0 0 1 0 2 2 0 0 2
+Nghost:           3409 ave        3450 max        3383 min
+Histogram: 2 0 1 2 0 2 0 0 0 1
+Neighs:        57832.2 ave       58985 max       56925 min
+Histogram: 1 1 1 0 2 1 0 1 0 1
+
+Total # of neighbors = 462658
+Ave neighs/atom = 31.155421
+Ave special neighs/atom = 5.76
+Neighbor list builds = 6
+Dangerous builds = 0
+
+fix             1 all npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000
+timestep        1
+thermo_style    custom step temp press density vol
+thermo          10000
+run             50000
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+WARNING: Inconsistent image flags (../domain.cpp:1051)
+Per MPI rank memory allocation (min/avg/max) = 7.377 | 7.379 | 7.38 Mbytes
+   Step          Temp          Press         Density         Volume    
+        65   3006253.6      3111873        0.90882444     1953565.7    
+     10000   14.100453     -71.017413      1.0098888      1758063      
+     20000   299.15254      3.4666758      1.1438567      1552159.6    
+     30000   300.33733      21.926819      1.2182683      1457354      
+     40000   298.41124     -35.070558      1.2576914      1411672.4    
+     50000   297.40293     -46.122635      1.2902804      1376017.4    
+     50065   299.1933       44.497932      1.2922457      1373924.6    
+Loop time of 72.2194 on 8 procs for 50000 steps with 14850 atoms
+
+Performance: 59.818 ns/day, 0.401 hours/ns, 692.335 timesteps/s, 10.281 Matom-step/s
+97.5% CPU use with 8 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 38.265     | 39.106     | 40.092     |  10.0 | 54.15
+Bond    | 10.994     | 11.088     | 11.231     |   2.4 | 15.35
+Neigh   | 2.8613     | 2.8626     | 2.8641     |   0.1 |  3.96
+Comm    | 13.105     | 14.231     | 15.129     |  18.3 | 19.71
+Output  | 0.00016063 | 0.00018363 | 0.00034035 |   0.0 |  0.00
+Modify  | 3.8902     | 3.9017     | 3.9304     |   0.6 |  5.40
+Other   |            | 1.029      |            |       |  1.42
+
+Nlocal:        1856.25 ave        1906 max        1813 min
+Histogram: 1 0 2 0 1 2 0 1 0 1
+Nghost:        4036.88 ave        4096 max        3974 min
+Histogram: 1 0 1 1 1 1 1 0 1 1
+Neighs:        84933.1 ave       87942 max       80210 min
+Histogram: 1 0 0 1 1 0 0 3 1 1
+
+Total # of neighbors = 679465
+Ave neighs/atom = 45.755219
+Ave special neighs/atom = 5.76
+Neighbor list builds = 770
+Dangerous builds = 3
+unfix           1
+
+fix             2 all npt temp 300.0 50.0 100.0 iso 1.0 1.0 1000
+timestep        1
+dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
+thermo_style    custom step temp press density vol
+thermo          10000
+run             500000
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+WARNING: Inconsistent image flags (../domain.cpp:1051)
+Per MPI rank memory allocation (min/avg/max) = 7.382 | 7.383 | 7.384 Mbytes
+   Step          Temp          Press         Density         Volume    
+     50065   299.1933       44.497932      1.2922457      1373924.6    
+     60000   293.22796      8.2256063      1.320224       1344808.3    
+     70000   289.06175     -43.66285       1.342871       1322128.7    
+     80000   287.60662      12.058332      1.3611152      1304407      
+     90000   280.63757      29.262158      1.3773905      1288994.1    
+    100000   275.0889      -45.596108      1.3899281      1277366.9    
+    110000   267.8648      -17.007134      1.401461       1266855.2    
+    120000   265.97059     -48.934395      1.4105994      1258648.1    
+    130000   260.14624      52.597729      1.4215345      1248966      
+    140000   256.87353      23.845181      1.4246019      1246276.8    
+    150000   248.92595     -49.845394      1.4332424      1238763.4    
+    160000   246.6714      -3.394014       1.4382034      1234490.3    
+    170000   240.08321      10.472864      1.4481588      1226003.8    
+    180000   236.15327      70.469425      1.4572888      1218322.8    
+    190000   227.42459      94.28856       1.4613212      1214961      
+    200000   223.80916     -5.4576268      1.4646421      1212206.1    
+    210000   218.12185     -26.15018       1.4706438      1207259.2    
+    220000   214.85869      10.697605      1.4754408      1203334.1    
+    230000   210.14481     -53.385157      1.4798991      1199709      
+    240000   205.40421     -76.176171      1.4834494      1196837.7    
+    250000   200.93052      55.130142      1.4915799      1190313.8    
+    260000   196.57979      9.2261746      1.4949593      1187623.1    
+    270000   187.72638     -7.3208179      1.5004457      1183280.5    
+    280000   185.60574      87.198261      1.5025324      1181637.2    
+    290000   180.04082      49.099975      1.5084372      1177011.7    
+    300000   175.63594      43.23437       1.5096214      1176088.4    
+    310000   170.49074      14.299695      1.5134705      1173097.4    
+    320000   162.8314      -36.922222      1.5130571      1173417.8    
+    330000   157.66532     -9.4414334      1.5164905      1170761.2    
+    340000   156.25491     -33.232103      1.520041       1168026.5    
+    350000   147.76658      11.44192       1.5230243      1165738.6    
+    360000   145.20338      95.416841      1.5258617      1163570.9    
+    370000   138.97934     -13.427493      1.5292943      1160959.2    
+    380000   136.71775      47.6916        1.5321858      1158768.2    
+    390000   130.02626      72.535696      1.5338929      1157478.6    
+    400000   123.80406     -78.754581      1.535023       1156626.5    
+    410000   120.59589      66.616882      1.538887       1153722.2    
+    420000   115.11531      50.070127      1.5408215      1152273.8    
+    430000   110.54357     -35.58293       1.5398068      1153033.1    
+    440000   105.14664      17.854502      1.54367        1150147.5    
+    450000   99.636992     -19.291496      1.5449986      1149158.5    
+    460000   96.576522      19.76075       1.5479172      1146991.7    
+    470000   88.89591       21.260916      1.5511199      1144623.5    
+    480000   85.627006     -14.311941      1.5498408      1145568.2    
+    490000   80.533544      15.820728      1.5526046      1143528.9    
+    500000   75.165708      16.857787      1.5548805      1141855.1    
+    510000   69.348905     -49.275668      1.5557167      1141241.4    
+    520000   65.152806      20.434705      1.5580875      1139504.8    
+    530000   59.416199     -40.108244      1.5588048      1138980.5    
+    540000   54.628021      16.695671      1.5607988      1137525.4    
+    550000   50.142476      2.1828803      1.562988       1135932.1    
+    550065   50.086245      10.217565      1.5633264      1135686.2    
+Loop time of 866.535 on 8 procs for 500000 steps with 14850 atoms
+
+Performance: 49.854 ns/day, 0.481 hours/ns, 577.011 timesteps/s, 8.569 Matom-step/s
+97.8% CPU use with 8 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 478.29     | 496.55     | 531.07     |  71.8 | 57.30
+Bond    | 109.42     | 111.48     | 115.07     |  15.6 | 12.86
+Neigh   | 27.671     | 27.69      | 27.7       |   0.2 |  3.20
+Comm    | 140.27     | 178.38     | 198.62     | 131.9 | 20.59
+Output  | 0.94822    | 1.1038     | 1.2532     |   9.6 |  0.13
+Modify  | 40.108     | 40.36      | 40.805     |   3.1 |  4.66
+Other   |            | 10.98      |            |       |  1.27
+
+Nlocal:        1856.25 ave        1917 max        1822 min
+Histogram: 3 0 2 0 0 1 1 0 0 1
+Nghost:         4398.5 ave        4438 max        4377 min
+Histogram: 3 0 0 2 1 1 0 0 0 1
+Neighs:         102906 ave      109167 max       98612 min
+Histogram: 1 2 0 2 0 0 2 0 0 1
+
+Total # of neighbors = 823244
+Ave neighs/atom = 55.437306
+Ave special neighs/atom = 5.76
+Neighbor list builds = 6610
+Dangerous builds = 0
+unfix           2
+
+# # -----------------------------------------------------
+# # 5. 计算均方回转半径
+# # -----------------------------------------------------
+# # 使用compute gyration命令计算整个体系的回转半径
+# fix             equil all nvt temp 300.0 300.0 100.0
+# compute         rg all gyration
+# fix             avg all ave/time 1000 500 1000000 c_rg file avg.txt
+# # 输出热力学信息及回转半径数据，每隔1000步输出一次
+# thermo_style    custom step temp pe ke etotal c_rg
+# thermo          10000
+# # 输出轨迹文件，便于后续可视化与分析
+# dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
+# # 运行模拟，记录回转半径数据（后续可统计分析均值与波动）
+# run             1000000
+# unfix           equil
+# # -----------------------------------------------------
+# # 6. 数据输出
+# # -----------------------------------------------------
+
+
+# # 写出最终体系数据文件
+# write_data      pdms_out.datata
+Total wall time: 0:15:39

@@ -36,7 +36,7 @@ neigh_modify    delay 0 every 1 check yes
 # -----------------------------------------------------
 minimize        1.0e-4 1.0e-6 1000 10000
 
-fix             equil all nvt temp 300.0 500.0 100.0
+fix             equil all nvt temp 300.0 300.0 10.0
 timestep        10
 thermo_style    one
 thermo          10000
@@ -47,24 +47,25 @@ unfix           equil
 # 5. 计算均方回转半径
 # -----------------------------------------------------
 # 使用compute gyration命令计算整个体系的回转半径
-fix             equil all nvt temp 500.0 500.0 100.0
+fix             equil all nvt temp 300.0 300.0 10.0
 # variable        d_end equal "sqrt((x[1]-x[200])^2 + (y[1]-y[200])^2 + (z[1]-z[200])^2)"
 
 # 定义链的两个端点组（假设原子ID为1和100）
-group head id 1
-group tail id 100
+group           head id 1
+group           tail id 100
 
 # 计算头尾原子的未包装坐标
-compute pos_head head property/atom xu yu zu
-compute pos_tail tail property/atom xu yu zu
+compute         pos_head head property/atom xu yu zu
+compute         pos_tail tail property/atom xu yu zu
 
 # 使用 compute reduce 提取单个标量值（即头尾原子的坐标）
-compute head_coord head reduce ave c_pos_head[1] c_pos_head[2] c_pos_head[3]
-compute tail_coord tail reduce ave c_pos_tail[1] c_pos_tail[2] c_pos_tail[3]
+compute         head_coord head reduce ave c_pos_head[1] c_pos_head[2] c_pos_head[3]
+compute         tail_coord tail reduce ave c_pos_tail[1] c_pos_tail[2] c_pos_tail[3]
 
 # 计算真实的端到端距离
-variable d_end equal "sqrt((c_head_coord[1]-c_tail_coord[1])^2 + (c_head_coord[2]-c_tail_coord[2])^2 + (c_head_coord[3]-c_tail_coord[3])^2)"
-
+variable        d_end equal "sqrt((c_head_coord[1]-c_tail_coord[1])^2 + (c_head_coord[2]-c_tail_coord[2])^2 + (c_head_coord[3]-c_tail_coord[3])^2)"
+# 定义计算每个原子的动能
+compute         mv2 all ke/atom
 
 compute         rg all gyration
 fix             avg all ave/time 1000 900 1000000 c_rg v_d_end file avg.txt
@@ -72,7 +73,7 @@ fix             avg all ave/time 1000 900 1000000 c_rg v_d_end file avg.txt
 thermo_style    custom step temp pe ke etotal c_rg v_d_end
 thermo          10000
 # 输出轨迹文件，便于后续可视化与分析
-dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
+dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z c_mv2
 # 运行模拟，记录回转半径数据（后续可统计分析均值与波动）
 run             1000000
 unfix           equil
