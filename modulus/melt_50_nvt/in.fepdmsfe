@@ -1,0 +1,137 @@
+# ============================================================
+#  PDMS + Fe slab tensile test (Fe as rigid grips)
+#  Units: metal
+# ============================================================
+log             log.fepdmsfe
+units           metal
+dimension       3
+boundary        p p p
+atom_style      full
+
+# -------------------- Read PDMS structure -------------------
+read_data       pdms50_spp.data  extra/atom/types 1
+
+# -------------------- Save original box ---------------------
+variable xlo equal xlo
+variable xhi equal xhi
+variable xlo_be equal ${xlo}
+variable xhi_be equal ${xhi}
+variable ylo equal ylo
+variable yhi equal yhi
+variable zlo equal zlo
+variable zhi equal zhi
+
+# -------------------- Expand box for Fe slabs ----------------
+# Add 20 Å Fe slab on each side in x
+change_box all x delta -10 10
+variable xlo_af equal xlo
+variable xhi_af equal xhi
+print "${xlo_be} ${xhi_be}"
+print "${xlo_af} ${xhi_af}"
+
+# -------------------- Create Fe slabs ------------------------
+lattice         bcc 2.855
+
+region Fe_left  block ${xlo_af} ${xlo_be} ${ylo} ${yhi} ${zlo} ${zhi} units box
+region Fe_right block ${xhi_be} ${xhi_af} ${ylo} ${yhi} ${zlo} ${zhi} units box
+
+create_atoms    2 region Fe_left
+create_atoms    2 region Fe_right
+
+# -------------------- Groups --------------------------------
+group Fe_left   region Fe_left
+group Fe_right  region Fe_right
+group Fe        union Fe_left Fe_right
+group PDMS      subtract all Fe
+
+# -------------------- Masses --------------------------------
+mass 1 72.0        # PDMS coarse-grained bead (example)
+mass 2 55.845      # Fe
+
+# ============================================================
+#  Force field
+# ============================================================
+
+pair_style hybrid eam/alloy lj/cut 10.5
+
+# Fe–Fe
+pair_coeff * * eam/alloy FeNi.eam.alloy NULL Fe
+
+# PDMS–PDMS (示例，用你自己换算到 metal 的 LJ)
+pair_coeff 1 1 lj/cut 0.0318 5.1
+
+# Fe–PDMS adhesion (弱 LJ，只传力)
+pair_coeff 1 2 lj/cut 0.0159 5.1
+
+# Bonded interactions (PDMS)
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  harmonic
+
+bond_coeff      1 0.574 4.48
+angle_coeff     1 0.238 86.0
+dihedral_coeff  1 0.0145 1 1
+
+# ============================================================
+#  Initial relaxation (remove bad contacts)
+# ============================================================
+
+velocity        all create 300.0 12345 mom yes rot no
+
+minimize        1.0e-6 1.0e-8 1000 10000
+
+# ============================================================
+#  Equilibration (PDMS only)
+# ============================================================
+timestep        0.001
+fix             nvt_pdms PDMS npt temp 300.0 300.0 0.05 iso 1 1 0.5
+variable        vol_fe equal "2 * 10 * ly * lz"
+variable        vol_pdms equal "vol - v_vol_fe"
+variable        NA equal 6.02214076e23
+variable        density_fe equal "23228 * 55.845 /v_NA / v_vol_fe * 1e24"   # g/cm3
+variable        density_pdms equal "12350 * 72 /v_NA / v_vol_pdms * 1e24"   # g/cm3
+thermo          1000
+thermo_style    custom step temp pe ke press pxx lx v_density_fe v_density_pdms
+dump            1 all custom 1000 dump.pdms_fe_min.lammpstrj id type x y z
+run             200000
+
+unfix           nvt_pdms
+undump          1        
+# Save initial length for strain
+variable            tmp equal "lx"
+variable            L0 equal ${tmp}
+print               "Initial length L0 = ${L0}"
+
+# ============================================================
+#  Tensile deformation (move right Fe slab)
+# ============================================================
+
+reset_timestep  0
+
+# Move right slab with constant velocity (engineering strain)
+# variable        vpull equal 1.0e-5   # Å/fs  (adjust!)
+# fix             pull Fe_right move linear ${vpull} 0.0 0.0 units box
+variable srate equal -1.0e9 
+variable srate1 equal "v_srate / 1.0e12"
+
+fix 2 all deform 1 x erate ${srate1} units box remap x 
+
+# Thermostat PDMS only (y/z directions effectively free)
+fix             1 all npt temp 300 300 0.05 y 0 0 0.5 z 0 0 0.5 drag 2
+
+# -------------------- Stress / strain ------------------------
+compute         sFe Fe stress/atom NULL
+compute         sFe_sum Fe reduce sum c_sFe[1]
+
+variable        strain equal "(lx - v_L0)/v_L0"
+variable        stress equal "c_sFe_sum / vol"   # metal units: bar
+
+# fix             out all print 100 "${strain} ${stress}" file stress_strain_Fe.txt screen no
+
+thermo_style    custom step temp v_strain v_stress v_density_fe v_density_pdms lx ly lz vol
+
+dump            1 all custom 1000 dump.pdms_fe.lammpstrj id type x y z
+
+run             300000
+
+print           "Simulation completed"

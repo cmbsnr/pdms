@@ -1,0 +1,342 @@
+LAMMPS (29 Aug 2024)
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            s s s
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           bad_pdms_s50.data
+Reading data file ...
+  orthogonal box = (-24.331 -34.6245 -24.6195) to (25.669 15.3755 25.3805)
+  2 by 2 by 4 MPI processor grid
+  reading atoms ...
+  50 atoms
+  scanning bonds ...
+  1 = max bonds/atom
+  scanning angles ...
+  1 = max angles/atom
+  scanning dihedrals ...
+  1 = max dihedrals/atom
+  orthogonal box = (-24.336 -34.6295 -24.6245) to (25.674 15.3805 25.3855)
+  2 by 2 by 4 MPI processor grid
+  reading bonds ...
+  49 bonds
+  reading angles ...
+  48 angles
+  reading dihedrals ...
+  47 dihedrals
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     2 = max # of 1-3 neighbors
+     4 = max # of 1-4 neighbors
+     6 = max # of special neighbors
+  special bonds CPU = 0.001 seconds
+  read_data CPU = 0.009 seconds
+
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   7
+special_bonds       lj 0.0 0.0 0.5
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0.5     
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     2 = max # of 1-3 neighbors
+     4 = max # of 1-4 neighbors
+     6 = max # of special neighbors
+  special bonds CPU = 0.001 seconds
+pair_coeff          1 1 0.7337 5.1
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+bond_coeff          1 13.243 4.48
+angle_style         harmonic
+angle_coeff         1 5.48 86.0
+dihedral_style      harmonic
+dihedral_coeff      1 0.3346  1  1
+
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 1000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+velocity        all create 300 4928459
+minimize        1.0e-4 1.0e-6 1000 10000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 1000, page size: 100000
+  master list distance cutoff = 8
+  ghost atom cutoff = 8
+  binsize = 4, bins = 10 6 6
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+Per MPI rank memory allocation (min/avg/max) = 8.009 | 8.157 | 8.592 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press          Volume    
+         0   300            1.5721112e+08  194.66959      1.5721136e+08  2.2914696e+09  18818.161    
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+       110   300           -26.817372      17.340514      34.34105       86.442164      21556.111    
+Loop time of 0.00638332 on 16 procs for 110 steps with 50 atoms
+
+81.9% CPU use with 16 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = linesearch alpha is zero
+  Energy initial, next-to-last, final = 
+      157211313.951695  -9.47685743618556  -9.47685743618556
+  Force two-norm initial, final = 2.4386001e+09 2.4118368
+  Force max component initial, final = 1.2169018e+09 1.0544282
+  Final line search alpha, max atom move = 1.2450728e-09 1.3128399e-09
+  Iterations, force evaluations = 110 178
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 6.209e-06  | 1.6028e-05 | 5.0683e-05 |   0.0 |  0.25
+Bond    | 1.0027e-05 | 5.3438e-05 | 0.00014293 |   0.0 |  0.84
+Neigh   | 0.00090299 | 0.0009508  | 0.00098456 |   0.0 | 14.90
+Comm    | 0.0012101  | 0.0018078  | 0.0022895  |   0.8 | 28.32
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.003555   |            |       | 55.70
+
+Nlocal:          3.125 ave          10 max           0 min
+Histogram: 6 1 1 1 1 2 1 2 0 1
+Nghost:           16.5 ave          23 max           7 min
+Histogram: 1 1 1 1 1 2 4 0 1 4
+Neighs:          4.375 ave          19 max           0 min
+Histogram: 8 2 1 2 0 0 1 0 1 1
+
+Total # of neighbors = 70
+Ave neighs/atom = 1.4
+Ave special neighs/atom = 5.76
+Neighbor list builds = 20
+Dangerous builds = 0
+dump            1 all custom 10000 dump.pdms_min.lammpstrj id type x y z vx vy vz
+fix             1 all nvt temp 300 300 10
+thermo_style    custom step temp press density vol
+thermo          10000
+run             500000
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+Per MPI rank memory allocation (min/avg/max) = 6.884 | 7.134 | 7.467 Mbytes
+   Step          Temp          Press         Density         Volume    
+       110   300            85.897127      0.045928568    21692.889    
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Communication cutoff 8 is shorter than a bond length based estimate of 11.080000000000002. This may lead to errors. (../comm.cpp:730)
+WARNING: Too many warnings: 306 vs 100. All future warnings will be suppressed (../thermo.cpp:478)
+     10000   310.25699     -71.356841      0.027869315    35749.833    
+     20000   300.93299     -3.4120691      0.0093934541   106065.71    
+     30000   360.66053     -14.910544      0.015044213    66226.352    
+     40000   269.02222     -89.081351      0.017907005    55638.749    
+     50000   255.12521      32.903447      0.033618926    29635.788    
+     60000   257.37014      1.2612029      0.010977368    90761.587    
+     70000   328.94807     -12.348265      0.01015412     98120.111    
+     80000   244.30105      52.052552      0.010231713    97376.008    
+     90000   306.1372       2.4867848      0.026867988    37082.172    
+    100000   260.06342      18.112282      0.012472642    79880.7      
+    110000   372.36958      57.511246      0.0088040709   113166.21    
+    120000   314.07229      37.502591      0.018345324    54309.389    
+    130000   260.51149     -31.274883      0.022439386    44400.652    
+    140000   316.57378      165.96623      0.047306061    21061.22     
+    150000   301.03114      5.8100445      0.017899949    55660.681    
+    160000   273.57503     -28.02437       0.013389341    74411.68     
+    170000   313.71533     -15.930793      0.012426113    80179.807    
+    180000   282.95064     -45.896801      0.01897565     52505.362    
+    190000   268.46389     -32.230375      0.016422013    60669.99     
+    200000   338.65005     -25.664193      0.017373253    57348.119    
+    210000   283.28083      113.27823      0.018706148    53261.812    
+    220000   305.53207      2.8778102      0.0083364634   119513.91    
+    230000   380.22677      7.4631463      0.019779717    50370.962    
+    240000   318.1071       97.954403      0.02449495     40674.642    
+    250000   390.84818     -25.010886      0.01256212     79311.719    
+    260000   286.10831      59.40925       0.011910852    83648.371    
+    270000   355.94803     -17.015696      0.022763735    43768.009    
+    280000   287.00518     -121.95457      0.025027149    39809.702    
+    290000   330.43584      89.590124      0.017140759    58125.977    
+    300000   349.7322      -23.23282       0.019701891    50569.935    
+    310000   266.06343      38.663594      0.029929971    33288.484    
+    320000   253.0008       49.159765      0.019288562    51653.584    
+    330000   258.47791      24.768887      0.020574032    48426.256    
+    340000   357.28229      71.844598      0.016875581    59039.351    
+    350000   253.26521     -33.484881      0.012415079    80251.067    
+    360000   271.92438     -69.981363      0.019121784    52104.1      
+    370000   348.70804      5.1175387      0.021734866    45839.867    
+    380000   366.84344      21.89392       0.0086379798   115342.17    
+    390000   317.58772      13.144097      0.025469556    39118.206    
+    400000   274.54367     -39.807142      0.018469616    53943.914    
+    410000   265.60237      82.597031      0.014697263    67789.721    
+    420000   257.6091       58.960659      0.025084587    39718.547    
+    430000   269.73677     -74.194627      0.024036242    41450.879    
+    440000   279.66339     -69.52521       0.016131846    61761.275    
+    450000   313.0805       36.404577      0.01822681     54662.518    
+    460000   255.86423      45.138935      0.012438015    80103.082    
+    470000   382.25276     -50.582096      0.039647792    25129.353    
+    480000   237.23873      21.977289      0.014381391    69278.651    
+    490000   321.35025     -117.32589      0.024803778    40168.21     
+    500000   278.63606      13.031155      0.012717042    78345.527    
+    500110   318.88684      18.250363      0.012908973    77180.686    
+Loop time of 5.77343 on 16 procs for 500000 steps with 50 atoms
+
+Performance: 7482.558 ns/day, 0.003 hours/ns, 86603.679 timesteps/s, 4.330 Matom-step/s
+94.6% CPU use with 16 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.01707    | 0.024283   | 0.031079   |   2.4 |  0.42
+Bond    | 0.065243   | 0.12132    | 0.18342    |  10.2 |  2.10
+Neigh   | 0.16676    | 0.173      | 0.18149    |   1.1 |  3.00
+Comm    | 1.4621     | 1.898      | 2.2246     |  15.6 | 32.87
+Output  | 0.0033026  | 0.0037957  | 0.0058501  |   0.9 |  0.07
+Modify  | 1.6987     | 2.0483     | 2.5382     |  16.5 | 35.48
+Other   |            | 1.505      |            |       | 26.06
+
+Nlocal:          3.125 ave          10 max           0 min
+Histogram: 7 1 0 2 0 1 1 2 1 1
+Nghost:        11.9375 ave          23 max           0 min
+Histogram: 1 1 1 3 1 5 0 0 1 3
+Neighs:         1.4375 ave           8 max           0 min
+Histogram: 8 2 2 3 0 0 0 0 0 1
+
+Total # of neighbors = 23
+Ave neighs/atom = 0.46
+Ave special neighs/atom = 5.76
+Neighbor list builds = 14096
+Dangerous builds = 0
+unfix           1
+write_data      pdms_50.data
+System init for write_data ...
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Total wall time: 0:00:05

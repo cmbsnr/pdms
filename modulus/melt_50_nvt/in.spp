@@ -1,0 +1,77 @@
+# 1. 初始化设置
+# -----------------------------------------------------
+log                 log.spp
+units               real
+dimension           3
+boundary            s p p
+atom_style          full
+
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+special_bonds       lj 0.0 0.0 0.5
+
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+angle_style         harmonic
+dihedral_style      harmonic
+
+# 读取包含PDMS分子结构的data文件
+read_data           pdms50_sss.data
+mass                1 72
+compute             pressperatom all stress/atom NULL
+compute             Ppairperatom all stress/atom NULL pair
+compute             Pbondperatom all stress/atom NULL bond
+compute             Pangleperatom all stress/atom NULL angle
+compute             Pdihedralperatom all stress/atom NULL dihedral
+compute             peperatom all pe/atom
+compute             Epairperatom all pe/atom pair
+compute             Ebondperatom all pe/atom bond
+compute             Eangleperatom all pe/atom angle
+compute             Edihedralperatom all pe/atom dihedral
+variable            pxxperatom atom c_pressperatom[1]
+variable            pyyperatom atom c_pressperatom[2]
+variable            pzzperatom atom c_pressperatom[3]
+variable            Pxxpairperatom atom c_Ppairperatom[1]
+variable            Pyypairperatom atom c_Ppairperatom[2]
+variable            Pzzpairperatom atom c_Ppairperatom[3]
+variable            Pxxbondperatom atom c_Pbondperatom[1]
+variable            Pyybondperatom atom c_Pbondperatom[2]
+variable            Pzzbondperatom atom c_Pbondperatom[3]
+variable            Pxxangleperatom atom c_Pangleperatom[1]
+variable            Pyyangleperatom atom c_Pangleperatom[2]
+variable            Pzzangleperatom atom c_Pangleperatom[3]
+variable            Pxxdihedralperatom atom c_Pdihedralperatom[1]
+variable            Pyydihedralperatom atom c_Pdihedralperatom[2]
+variable            Pzzdihedralperatom atom c_Pdihedralperatom[3]
+variable            NA equal 6.02214076e23
+variable            dens equal "12350 * 72 / v_NA / (lx * ly * lz / 1e24)"  # 计算密度，单位g/cm3
+
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify        one 1000
+neighbor            0.5 bin
+neigh_modify        delay 0 every 1 check yes
+# npt系综下驰豫 
+dump                min1 all custom 10000 dump.spp.lammpstrj id type x y z vx vy vz v_pxxperatom v_pyyperatom v_pzzperatom v_Pxxpairperatom v_Pyypairperatom v_Pzzpairperatom v_Pxxbondperatom v_Pyybondperatom v_Pzzbondperatom v_Pxxangleperatom v_Pyyangleperatom v_Pzzangleperatom v_Pxxdihedralperatom v_Pyydihedralperatom v_Pzzdihedralperatom c_peperatom c_Epairperatom c_Ebondperatom c_Eangleperatom c_Edihedralperatom
+fix                 1 all npt temp 300 300 50 y 1 1 500 z 1 1 500
+thermo_style        custom step temp density v_dens press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 500000
+unfix               1
+undump              min1
+# npt系综下驰豫 
+dump                min2 all custom 10000 dump.spp_wall.lammpstrj id type x y z vx vy vz v_pxxperatom v_pyyperatom v_pzzperatom v_Pxxpairperatom v_Pyypairperatom v_Pzzpairperatom v_Pxxbondperatom v_Pyybondperatom v_Pzzbondperatom v_Pxxangleperatom v_Pyyangleperatom v_Pzzangleperatom v_Pxxdihedralperatom v_Pyydihedralperatom v_Pzzdihedralperatom c_peperatom c_Epairperatom c_Ebondperatom c_Eangleperatom c_Edihedralperatom
+variable            linear equal vdisplace(xhi,-0.00000001)
+fix                 xwallslo all wall/reflect xlo EDGE
+fix                 xwallshi all wall/reflect xhi v_linear
+fix                 2 all npt temp 300 300 50 y 1 1 500 z 1 1 500
+thermo_style        custom step temp density press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 100000
+unfix               2
+velocity            all set 0.0 0.0 0.0
+write_data          pdms50_spp.data  nocoeff

@@ -1,0 +1,199 @@
+LAMMPS (29 Aug 2024)
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p f
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           martini_water_box.data
+Reading data file ...
+  orthogonal box = (-1 -1 -1) to (135 135 135)
+  2 by 2 by 4 MPI processor grid
+  reading atoms ...
+  18928 atoms
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     0 = max # of 1-2 neighbors
+     0 = max # of 1-3 neighbors
+     0 = max # of 1-4 neighbors
+     1 = max # of special neighbors
+  special bonds CPU = 0.001 seconds
+  read_data CPU = 0.018 seconds
+change_box          all x delta -20 20
+Changing box ...
+  orthogonal box = (-21 -1 -1) to (155 135 135)
+change_box          all y delta -20 20
+Changing box ...
+  orthogonal box = (-21 -21 -1) to (155 155 135)
+change_box          all z delta -20 20
+Changing box ...
+  orthogonal box = (-21 -21 -21) to (155 155 155)
+# fix                 xwallslo all wall/reflect xlo EDGE xhi EDGE
+# fix                 ywallslo all wall/reflect ylo EDGE yhi EDGE
+fix                 zwallslo all wall/reflect zlo EDGE zhi EDGE
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style          lj/cut   12.0
+pair_coeff          1 1 1.1071 4.7
+# pair_coeff          1 2 0.8929 4.4
+# pair_coeff          1 3 0.8095 4.1
+# pair_coeff          2 2 0.7619 4.1
+# pair_coeff          2 3 0.7024 3.8
+# pair_coeff          3 3 0.6667 3.5
+# # 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+# bond_style          harmonic
+# bond_coeff          1 13.243 4.48
+# angle_style         harmonic
+# angle_coeff         1 5.48 86.0
+# dihedral_style      harmonic
+# dihedral_coeff      1 0.3346  1  1
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 2000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+minimize        1.0e-4 1.0e-6 1000 10000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 13
+  ghost atom cutoff = 13
+  binsize = 6.5, bins = 28 28 28
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 7.33 | 7.353 | 7.372 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0              61502981       0              61502981       3140093.6    
+       369   0             -137217.43      0             -137217.43     -407.15307    
+Loop time of 0.450871 on 16 procs for 369 steps with 18928 atoms
+
+97.5% CPU use with 16 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+       61502981.248571  -137204.092970561  -137217.425113363
+  Force two-norm initial, final = 7444190 20.824366
+  Force max component initial, final = 380779.38 2.1076011
+  Final line search alpha, max atom move = 0.024527707 0.051694621
+  Iterations, force evaluations = 369 369
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.051317   | 0.17004    | 0.28986    |  18.2 | 37.71
+Bond    | 1.5572e-05 | 1.9393e-05 | 2.3235e-05 |   0.0 |  0.00
+Neigh   | 0.01907    | 0.054888   | 0.087783   |  10.0 | 12.17
+Comm    | 0.054838   | 0.18276    | 0.361      |  22.7 | 40.54
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.04315    |            |       |  9.57
+
+Nlocal:           1183 ave        1718 max         604 min
+Histogram: 3 2 3 0 0 0 0 0 5 3
+Nghost:        1557.44 ave        2206 max         943 min
+Histogram: 7 1 0 0 0 0 0 0 2 6
+Neighs:        41912.1 ave       64464 max       15711 min
+Histogram: 3 1 1 3 0 0 0 0 6 2
+
+Total # of neighbors = 670593
+Ave neighs/atom = 35.428624
+Ave special neighs/atom = 0
+Neighbor list builds = 51
+Dangerous builds = 0
+fix             1 all nvt temp 300.0 300.0 100.0
+dump            traj all custom 1000 dump.water.lammpstrj id type x y z
+timestep        1
+thermo_style    custom step temp press density vol
+thermo          10000
+run             100000
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Per MPI rank memory allocation (min/avg/max) = 6.205 | 6.229 | 6.248 Mbytes
+   Step          Temp          Press         Density         Volume    
+       369   0             -407.15307      0.41509574     5451776      
+     10000   300.89646     -282.91963      0.41509574     5451776      
+     20000   301.67209     -32.515881      0.41509574     5451776      
+     30000   300.19863      3.6182991      0.41509574     5451776      
+     40000   299.33282      15.358568      0.41509574     5451776      
+     50000   299.75262      2.7790226      0.41509574     5451776      
+     60000   298.08113      4.3656344      0.41509574     5451776      
+     70000   299.06287      11.196492      0.41509574     5451776      
+     80000   299.80757      14.494171      0.41509574     5451776      
+     90000   298.42943     -7.8514647      0.41509574     5451776      
+    100000   300.67672      2.3074237      0.41509574     5451776      
+    100369   300.758       -7.5156569      0.41509574     5451776      
+Loop time of 67.5596 on 16 procs for 100000 steps with 18928 atoms
+
+Performance: 127.887 ns/day, 0.188 hours/ns, 1480.175 timesteps/s, 28.017 Matom-step/s
+97.3% CPU use with 16 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 9.5809     | 31.824     | 50.436     | 267.1 | 47.10
+Bond    | 0.0044405  | 0.0051931  | 0.0059396  |   0.6 |  0.01
+Neigh   | 0.69815    | 2.0536     | 3.1057     |  62.0 |  3.04
+Comm    | 9.216      | 27.518     | 50.226     | 279.9 | 40.73
+Output  | 0.17265    | 0.20142    | 0.22796    |   3.7 |  0.30
+Modify  | 3.3714     | 4.4726     | 6.2221     |  49.8 |  6.62
+Other   |            | 1.486      |            |       |  2.20
+
+Nlocal:           1183 ave        1869 max         512 min
+Histogram: 4 3 1 0 0 0 0 1 5 2
+Nghost:        1653.56 ave        2275 max        1023 min
+Histogram: 6 2 0 0 0 0 0 0 2 6
+Neighs:        39386.8 ave       65903 max       13303 min
+Histogram: 3 2 3 0 0 0 0 2 5 1
+
+Total # of neighbors = 630189
+Ave neighs/atom = 33.294009
+Ave special neighs/atom = 0
+Neighbor list builds = 1784
+Dangerous builds = 0
+unfix           1
+# fix             2 all nvt temp 300.0 300.0 100.0
+# dump            traj all custom 1000 dump.water.lammpstrj id type x y z
+# compute         msd_all all msd
+# fix             msdout all ave/time 100 10 1000 c_msd_all[*] file msd_water.txt
+# run             5000000
+# unfix           2
+write_data      water_out.data
+System init for write_data ...
+Generated 0 of 0 mixed pair_coeff terms from geometric mixing rule
+Total wall time: 0:01:08

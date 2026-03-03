@@ -1,0 +1,56 @@
+# 使用Martini 3粗粒化力场计算PDMS上水的接触角
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p f
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           pdms_ca_water_rep.data
+change_box          all z delta -5 5
+fix                 zwallslo all wall/reflect zlo EDGE zhi EDGE
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+special_bonds       lj 0.0 0.0 0.5
+pair_coeff          1 1 0.7337 5.1
+pair_coeff          1 2 0.4595 4.3
+pair_coeff          2 2 0.6762 4.1
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+bond_coeff          1 13.243 4.48
+angle_style         harmonic
+angle_coeff         1 5.48 86.0
+dihedral_style      harmonic
+dihedral_coeff      1 0.3346  1  1
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 1000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+group           pdms id <= 35750
+group           water id > 35750  
+# fix             fix_atom pdms spring/self 10.0
+minimize        1.0e-4 1.0e-6 1000 10000
+velocity        all create 300 4928459
+fix             1 all nvt temp 300.0 300.0 100.0
+compute         pdms_temp pdms temp
+compute         water_temp water temp
+timestep        1
+thermo_style    custom step temp press density vol c_pdms_temp c_water_temp
+thermo          10000     
+dump            traj all custom 1000 dump.ca.lammpstrj id type x y z
+run             500000
+unfix           1
+
+# # 写出最终体系数据文件
+write_data      pdms_ca_end.data

@@ -39,7 +39,7 @@ fix             1 all npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000
 timestep        1
 thermo_style    custom step temp press density vol
 thermo          10000     
-run             50000
+run             100000
 unfix           1
 
 fix             2 all npt temp 300.0 50.0 100.0 iso 1.0 1.0 1000
@@ -47,7 +47,7 @@ timestep        1
 dump            traj all custom 1000 dump.pdms.lammpstrj id type x y z
 thermo_style    custom step temp press density vol
 thermo          10000     
-run             500000
+run             1000000
 unfix           2
 
 # # -----------------------------------------------------

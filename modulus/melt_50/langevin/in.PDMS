@@ -1,0 +1,134 @@
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+log                 log.nvt.lammps
+units               real
+dimension           3
+boundary            p p p
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           bad_pdms_50_box_nvt.data
+mass                1 72
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+special_bonds       lj 0.0 0.0 0.5
+pair_coeff          1 1 0.7337 5.1
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+bond_coeff          1 13.243 4.48
+angle_style         harmonic
+angle_coeff         1 5.48 86.0
+dihedral_style      harmonic
+dihedral_coeff      1 0.3346  1  1
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify        one 1000
+neighbor            1 bin
+neigh_modify        delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+minimize            1.0e-4 1.0e-6 10000 100000
+velocity            all create 300 4928459
+region              slab block 75 105 75 105 75 105 units box
+group               slabs dynamic all region slab every 100
+variable            nslab equal count(slabs)
+compute             pressperatom all stress/atom NULL
+compute             Ppairperatom all stress/atom NULL pair
+compute             Pbondperatom all stress/atom NULL bond
+compute             Pangleperatom all stress/atom NULL angle
+compute             Pdihedralperatom all stress/atom NULL dihedral
+compute             peperatom all pe/atom
+compute             Epairperatom all pe/atom pair
+compute             Ebondperatom all pe/atom bond
+compute             Eangleperatom all pe/atom angle
+compute             Edihedralperatom all pe/atom dihedral
+variable            pxxperatom atom c_pressperatom[1]
+variable            pyyperatom atom c_pressperatom[2]
+variable            pzzperatom atom c_pressperatom[3]
+variable            Pxxpairperatom atom c_Ppairperatom[1]
+variable            Pyypairperatom atom c_Ppairperatom[2]
+variable            Pzzpairperatom atom c_Ppairperatom[3]
+variable            Pxxbondperatom atom c_Pbondperatom[1]
+variable            Pyybondperatom atom c_Pbondperatom[2]
+variable            Pzzbondperatom atom c_Pbondperatom[3]
+variable            Pxxangleperatom atom c_Pangleperatom[1]
+variable            Pyyangleperatom atom c_Pangleperatom[2]
+variable            Pzzangleperatom atom c_Pangleperatom[3]
+variable            Pxxdihedralperatom atom c_Pdihedralperatom[1]
+variable            Pyydihedralperatom atom c_Pdihedralperatom[2]
+variable            Pzzdihedralperatom atom c_Pdihedralperatom[3]
+variable            NA equal 6.02214076e23
+variable            dens equal "12350 * 72 / v_NA / (vol / 1e24)"  # 计算整体密度，单位g/cm3
+variable            slabdens equal "v_nslab * 72 / v_NA / (30 * 30 * 30 / 1e24)"  # 计算slab密度，单位g/cm3
+# npt系综下驰豫 
+dump                min all custom 10000 dump.pdms_min.lammpstrj id type x y z vx vy vz v_pxxperatom v_pyyperatom v_pzzperatom v_Pxxpairperatom v_Pyypairperatom v_Pzzpairperatom v_Pxxbondperatom v_Pyybondperatom v_Pzzbondperatom v_Pxxangleperatom v_Pyyangleperatom v_Pzzangleperatom v_Pxxdihedralperatom v_Pyydihedralperatom v_Pzzdihedralperatom c_peperatom c_Epairperatom c_Ebondperatom c_Eangleperatom c_Edihedralperatom
+fix                 1 all npt temp 300 600 50 iso 0 0 500 drag 2
+thermo_style        custom step temp v_dens density v_slabdens v_nslab press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 500000
+unfix               1
+
+fix                 1 all nve/limit 0.05
+fix                 2 all langevin 600.0 600.0 50.0 904297
+thermo_style        custom step temp v_dens density v_slabdens v_nslab press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 1000000
+unfix               1
+unfix               2
+
+fix                 2 all npt temp 600 300 50 iso 0 0 500 drag 2
+thermo_style        custom step temp v_dens density v_slabdens v_nslab press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 500000
+unfix               2
+
+fix                 3 all npt temp 300 300 50 iso 0 0 500 drag 2
+thermo_style        custom step temp v_dens density v_slabdens v_nslab press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 5000000
+unfix               3
+undump              min          
+
+write_data          pdms_50_nvt_relaxation.data
+# -----------------------------------------------------
+# 5. npt下拉伸
+# -----------------------------------------------------
+# 计算应力
+reset_timestep      0
+timestep            1
+compute             slabpressperatom slabs stress/atom NULL
+compute             2 slabs reduce sum c_slabpressperatom[1] c_slabpressperatom[2]
+variable            CorVol equal 30*30*30
+variable            slabsigmaxx equal c_2[1]/(v_CorVol*10)
+compute             3 all reduce sum c_pressperatom[1] c_pressperatom[2]
+variable            sigmaxx equal c_3[1]/(vol*10)
+# 计算应变值
+variable            tmp equal "lx"
+variable            L0 equal ${tmp}
+variable            strain equal "(lx - v_L0)/v_L0"
+#dump输出
+dump                1 all custom 100000 dump.pdms.lammpstrj id type x y z vx vy vz v_pxxperatom v_pyyperatom v_pzzperatom v_Pxxpairperatom v_Pyypairperatom v_Pzzpairperatom v_Pxxbondperatom v_Pyybondperatom v_Pzzbondperatom v_Pxxangleperatom v_Pyyangleperatom v_Pzzangleperatom v_Pxxdihedralperatom v_Pyydihedralperatom v_Pzzdihedralperatom c_peperatom c_Epairperatom c_Ebondperatom c_Eangleperatom c_Edihedralperatom
+# 设置npt系综
+fix                 1 all npt temp 300 300 50 y 0 0 2000 z 0 0 2000 drag 2
+# deform拉伸，x方向
+fix                 2 all deform 1 x erate 1e-7 units box remap x
+# 热力学输出
+# fix                 ave_sxx all ave/time 100 100 10000 v_strain v_sigmaxx v_px file stress_profile.dat ave one
+# fix                 ave_sxx2 all ave/time 1000 200 200000 v_strain v_sigmaxx v_px file stress_profile2.dat ave one
+# fix                 ave_sxx3 all ave/time 200 1000 200000 v_strain v_sigmaxx v_px file stress_profile3.dat ave one
+# fix                 ave_sxx4 all ave/time 1000 1000 1000000 v_strain v_sigmaxx v_px file stress_profile4.dat ave one
+fix                 origin all print 100 "${strain} ${sigmaxx} ${slabsigmaxx}" file origin100.txt screen no 
+# thermo_style        custom step temp v_strain v_sigmaxx density press pxx pyy pzz lx ly lz etotal
+thermo_style        custom step temp v_dens density v_slabdens v_strain v_slabsigmaxx v_sigmaxx v_nslab press pxx pyy pzz lx ly lz
+thermo              10000
+
+# 启动模拟，n步
+run                 30000000

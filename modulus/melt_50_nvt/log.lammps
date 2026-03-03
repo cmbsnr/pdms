@@ -1,0 +1,6 @@
+LAMMPS (29 Aug 2024)
+# ============================================================
+#  PDMS + Fe slab tensile test (Fe as rigid grips)
+#  Units: metal
+# ============================================================
+log             log.fepdmsfe

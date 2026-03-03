@@ -1,0 +1,46 @@
+LAMMPS (29 Aug 2024)
+units           metal
+dimension       3
+boundary        s s s
+atom_style      atomic
+
+# ---------- Fe 晶格 ----------
+lattice         bcc 2.855
+Lattice spacing in x,y,z = 2.855 2.855 2.855
+region          whole block -60 60 -60 60 -40 100 units box
+create_box      1 whole
+Created orthogonal box = (-60 -60 -40) to (60 60 100)
+  2 by 2 by 4 MPI processor grid
+
+# ---------- 定义几何参数 ----------
+variable        R equal 25.0
+variable        H equal 60.0
+
+# ---------- 半球 ----------
+# 球心在 (0,0,0)，取 z <= 0 部分
+region          sphere_all sphere 0.0 0.0 0.0 ${R} units box
+region          sphere_all sphere 0.0 0.0 0.0 25 units box
+region          hemi block -100 100 -100 100 -${R} 0 units box
+region          hemi block -100 100 -100 100 -25 0 units box
+region          hemisphere intersect 2 sphere_all hemi
+
+# ---------- 圆柱 ----------
+region          cylinder_part cylinder z 0.0 0.0 ${R} 0 ${H} units box
+region          cylinder_part cylinder z 0.0 0.0 25 0 ${H} units box
+region          cylinder_part cylinder z 0.0 0.0 25 0 60 units box
+
+# ---------- 合并区域 ----------
+region          indenter union 2 hemisphere cylinder_part
+
+# ---------- 填充原子 ----------
+create_atoms    1 region indenter
+Created 13190 atoms
+  using lattice units in orthogonal box = (-60.012 -60.012 -40.014) to (60.012 60.012 100.014)
+  create_atoms CPU = 0.001 seconds
+
+mass            1 55.845
+
+write_data      indenter.data
+System init for write_data ...
+WARNING: Communication cutoff is 0.0. No ghost atoms will be generated. Atoms may get lost. (../comm_brick.cpp:210)
+Total wall time: 0:00:00

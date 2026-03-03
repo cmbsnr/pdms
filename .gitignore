@@ -1,1 +1,4 @@
 *.lammpstrj
+*.dat
+*.data
+*.txt

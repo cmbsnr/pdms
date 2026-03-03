@@ -1,0 +1,256 @@
+LAMMPS (29 Aug 2024)
+# 使用Martini 3粗粒化力场计算PDMS上水的接触角
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p f
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           pdms_ca_water_rep.data
+Reading data file ...
+  orthogonal box = (2.112507 2.790001 4.986527) to (496.5125 226.04999 257.26646)
+  4 by 2 by 2 MPI processor grid
+  reading atoms ...
+  64678 atoms
+  scanning bonds ...
+  1 = max bonds/atom
+  scanning angles ...
+  1 = max angles/atom
+  scanning dihedrals ...
+  1 = max dihedrals/atom
+  orthogonal box = (2.112507 2.790001 4.986527) to (496.5125 226.04999 257.26646)
+  4 by 2 by 2 MPI processor grid
+  reading bonds ...
+  44835 bonds
+  reading angles ...
+  43920 angles
+  reading dihedrals ...
+  43005 dihedrals
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     2 = max # of 1-3 neighbors
+     4 = max # of 1-4 neighbors
+     6 = max # of special neighbors
+  special bonds CPU = 0.005 seconds
+  read_data CPU = 0.428 seconds
+change_box          all z delta -5 5
+Changing box ...
+  orthogonal box = (2.112507 2.790001 -0.01347303) to (496.5125 226.04999 262.26646)
+fix                 zwallslo all wall/reflect zlo EDGE zhi EDGE
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+special_bonds       lj 0.0 0.0 0.5
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0.5     
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     2 = max # of 1-3 neighbors
+     4 = max # of 1-4 neighbors
+     6 = max # of special neighbors
+  special bonds CPU = 0.002 seconds
+pair_coeff          1 1 0.7337 5.1
+pair_coeff          1 2 0.4595 4.3
+pair_coeff          2 2 0.6762 4.1
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+bond_coeff          1 13.243 4.48
+angle_style         harmonic
+angle_coeff         1 5.48 86.0
+dihedral_style      harmonic
+dihedral_coeff      1 0.3346  1  1
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 1000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+group           pdms id <= 35750
+35750 atoms in group pdms
+group           water id > 35750
+28928 atoms in group water
+# fix             fix_atom pdms spring/self 10.0
+minimize        1.0e-4 1.0e-6 1000 10000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 1000, page size: 100000
+  master list distance cutoff = 13
+  ghost atom cutoff = 13
+  binsize = 6.5, bins = 77 35 41
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 8.485 | 9.322 | 10.22 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0             -205970.08      41113.251     -164856.83     -203.63058    
+       156   0             -242973.91      18521.344     -224452.56     -236.13734    
+Loop time of 0.882846 on 16 procs for 156 steps with 64678 atoms
+
+95.8% CPU use with 16 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+      -164856.82525845  -224430.518583208  -224452.563460435
+  Force two-norm initial, final = 1370.9305 70.66621
+  Force max component initial, final = 22.758527 12.615521
+  Final line search alpha, max atom move = 0.012194908 0.15384511
+  Iterations, force evaluations = 156 160
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.0001935  | 0.24938    | 0.55775    |  36.2 | 28.25
+Bond    | 0.00019891 | 0.039067   | 0.081013   |  19.6 |  4.43
+Neigh   | 0.14892    | 0.15108    | 0.15302    |   0.4 | 17.11
+Comm    | 0.0060582  | 0.21407    | 0.59077    |  40.2 | 24.25
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.2292     |            |       | 25.97
+
+Nlocal:        4042.38 ave        8828 max           0 min
+Histogram: 4 1 1 1 0 1 4 1 2 1
+Nghost:        2373.06 ave        5103 max           0 min
+Histogram: 4 0 0 1 2 5 0 1 2 1
+Neighs:         134721 ave      306182 max           0 min
+Histogram: 4 1 1 1 0 5 1 1 1 1
+
+Total # of neighbors = 2155533
+Ave neighs/atom = 33.327144
+Ave special neighs/atom = 4.0743375
+Neighbor list builds = 16
+Dangerous builds = 0
+velocity        all create 300 4928459
+fix             1 all nvt temp 300.0 300.0 100.0
+compute         pdms_temp pdms temp
+compute         water_temp water temp
+timestep        1
+thermo_style    custom step temp press density vol c_pdms_temp c_water_temp
+thermo          10000
+dump            traj all custom 1000 dump.ca.lammpstrj id type x y z
+run             500000
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+Per MPI rank memory allocation (min/avg/max) = 7.36 | 8.221 | 9.448 Mbytes
+   Step          Temp          Press         Density         Volume      c_pdms_temp    c_water_temp 
+       156   300           -144.81357      0.26710604     28950391       300.5514       299.32894    
+     10000   300.56123     -13.953251      0.26710604     28950391       279.09419      327.10133    
+     20000   299.67929     -16.273356      0.26710604     28950391       287.28689      315.00462    
+     30000   300.94704     -12.255452      0.26710604     28950391       289.34197      315.29939    
+     40000   298.88796     -16.558173      0.26710604     28950391       286.13278      314.6616     
+     50000   299.85696     -16.785735      0.26710604     28950391       287.52845      315.10333    
+     60000   300.23087     -14.343825      0.26710604     28950391       285.91193      317.9371     
+     70000   299.01943     -14.435312      0.26710604     28950391       286.21781      314.85047    
+     80000   299.14562     -14.674666      0.26710604     28950391       287.72311      313.2723     
+     90000   299.22701     -12.451204      0.26710604     28950391       287.22939      314.06443    
+    100000   300.06958     -10.269311      0.26710604     28950391       288.13164      314.83329    
+    110000   300.47348     -6.1018915      0.26710604     28950391       289.83462      313.63175    
+    120000   299.52726     -11.580383      0.26710604     28950391       290.31073      310.92772    
+    130000   301.33064     -10.368326      0.26710604     28950391       292.63058      312.09289    
+    140000   298.94695     -15.142676      0.26710604     28950391       289.37716      310.78395    
+    150000   298.47057     -12.891772      0.26710604     28950391       291.04029      307.6635     
+    160000   300.50535     -12.69977       0.26710604     28950391       293.94884      308.6185     
+    170000   299.68382     -8.247863       0.26710604     28950391       293.53386      307.29452    
+    180000   300.87027     -9.6968368      0.26710604     28950391       295.12623      307.97936    
+    190000   299.69512      3.4118321      0.26710604     28950391       294.40839      306.23899    
+    200000   298.69943     -10.353634      0.26710604     28950391       294.74322      303.59897    
+    210000   298.69672     -8.3592706      0.26710604     28950391       295.17153      303.06361    
+    220000   302.29861     -1.4771934      0.26710604     28950391       298.37865      307.15349    
+    230000   300.24086     -4.6810359      0.26710604     28950391       298.0534       302.95458    
+    240000   299.74265     -8.1263485      0.26710604     28950391       296.10144      304.25294    
+    250000   299.73264     -14.788655      0.26710604     28950391       296.63345      303.5731     
+    260000   299.82808     -0.50725832     0.26710604     28950391       296.2868       304.21489    
+    270000   298.94985     -6.4916792      0.26710604     28950391       296.46473      302.03138    
+    280000   299.61781     -5.1382763      0.26710604     28950391       298.2267       301.34734    
+    290000   300.18815     -4.4077734      0.26710604     28950391       298.6926       302.04678    
+    300000   298.36735     -9.6581485      0.26710604     28950391       296.48776      300.70053    
+    310000   300.46361     -9.8887214      0.26710604     28950391       299.98386      301.06689    
+    320000   299.34769     -5.3189023      0.26710604     28950391       299.24667      299.48289    
+    330000   300.8613      -8.964052       0.26710604     28950391       299.22045      302.89952    
+    340000   299.92988     -7.9622745      0.26710604     28950391       300.08134      299.75307    
+    350000   300.88284     -5.8385164      0.26710604     28950391       301.45132      300.19069    
+    360000   300.83023     -10.368286      0.26710604     28950391       299.81441      302.09603    
+    370000   299.95976     -7.7724389      0.26710604     28950391       300.15632      299.72722    
+    380000   302.48066     -4.2839818      0.26710604     28950391       303.13084      301.6876     
+    390000   300.07765     -7.9335736      0.26710604     28950391       299.7128       300.53893    
+    400000   300.45644      0.51558441     0.26710604     28950391       300.52633      300.38047    
+    410000   301.22024     -7.3924418      0.26710604     28950391       301.5524       300.82015    
+    420000   302.21783     -4.6219529      0.26710604     28950391       303.0317       301.22247    
+    430000   299.96586     -6.8726515      0.26710604     28950391       300.89932      298.82262    
+    440000   300.48689     -2.5810856      0.26710604     28950391       300.14823      300.9158     
+    450000   300.80133     -3.4701169      0.26710604     28950391       302.09368      299.21459    
+    460000   301.33871     -0.82634572     0.26710604     28950391       302.64422      299.73574    
+    470000   300.11566     -4.4451782      0.26710604     28950391       300.7001       299.40376    
+    480000   299.24657     -4.3404219      0.26710604     28950391       300.75987      297.38673    
+    490000   301.52088      0.66836778     0.26710604     28950391       302.99641      299.70778    
+    500000   299.25938     -6.5166757      0.26710604     28950391       299.87909      298.50386    
+    500156   299.49248     -2.3546272      0.26710604     28950391       299.92841      298.96409    
+Loop time of 1903.32 on 16 procs for 500000 steps with 64678 atoms
+
+Performance: 22.697 ns/day, 1.057 hours/ns, 262.698 timesteps/s, 16.991 Matom-step/s
+95.7% CPU use with 16 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.3471     | 488.37     | 1398.7     |1959.9 | 25.66
+Bond    | 0.31551    | 109.05     | 232.04     |1041.2 |  5.73
+Neigh   | 104.63     | 105.37     | 106.06     |   5.2 |  5.54
+Comm    | 70.823     | 993.87     | 1645.4     |1647.3 | 52.22
+Output  | 3.6112     | 4.3437     | 5.0027     |  22.7 |  0.23
+Modify  | 46.771     | 156.04     | 434.28     |1244.9 |  8.20
+Other   |            | 46.27      |            |       |  2.43
+
+Nlocal:        4042.38 ave       11625 max         424 min
+Histogram: 8 0 0 0 4 1 0 2 0 1
+Nghost:         2240.5 ave        5753 max         265 min
+Histogram: 5 2 1 0 4 0 0 1 2 1
+Neighs:         123734 ave      448622 max         471 min
+Histogram: 8 0 0 4 1 0 2 0 0 1
+
+Total # of neighbors = 1979745
+Ave neighs/atom = 30.609249
+Ave special neighs/atom = 4.0743375
+Neighbor list builds = 9513
+Dangerous builds = 0
+unfix           1
+
+# # 写出最终体系数据文件
+write_data      pdms_ca_end.data
+System init for write_data ...
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+WARNING: Not all mixed pair coeffs generated from mixing. Use write_data with 'pair ij' option to store all pair coeffs. (../write_data.cpp:364)
+Total wall time: 0:31:44
