@@ -1,4 +1,41 @@
+# PDMS/LAMMPS repository ignore policy
+# See DATA_MANAGEMENT.md before adding generated data with `git add -f`.
+
+# Large trajectories and restart files (generated, never commit directly)
 *.lammpstrj
+*.restart
+restart.*
+
+# LAMMPS/runtime logs (already tracked files are intentionally unaffected)
+log.lammps
+log.lammps.*
+log.*.lammps
+log.*
+screen.*
+slurm-*.out
+*.out
+*.err
+
+# Large generated analysis series
 *.dat
+profile.gk
+fz_map*.txt
+minp*.txt
+origin*.txt
+msd*.txt
+density_*.txt
+*_ts.txt
+
+# LAMMPS structure snapshots are mixed input/output in the legacy layout.
+# Keep them ignored for now to prevent accidental multi-GB commits. A required,
+# reviewed input may be added explicitly with `git add -f path/to/file.data`.
 *.data
-*.txt
+
+# Local scratch and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+Thumbs.db
+*~
+*.swp
