@@ -1,0 +1,42 @@
+# LAMMPS输入文件示例：使用Martini 3粗粒化力场计算PDMS的均方回转半径
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p p
+atom_style          full
+
+# 读取包含PDMS分子结构的data文件
+read_data           martini_water_box.data
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style          lj/cut   12.0
+pair_coeff          1 1 1.1071 4.7
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify    one 2000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 4. 能量最小化与预平衡
+# -----------------------------------------------------
+minimize        1.0e-4 1.0e-6 1000 10000
+fix             1 all npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000.0
+dump            traj all custom 1000 dump.water.lammpstrj id type x y z
+timestep        1
+thermo_style    custom step temp press density vol
+thermo          10000
+run             100000
+unfix           1
+# fix             2 all nvt temp 300.0 300.0 100.0
+# dump            traj all custom 1000 dump.water.lammpstrj id type x y z
+# compute         msd_all all msd
+# fix             msdout all ave/time 100 10 1000 c_msd_all[*] file msd_water.txt
+# run             5000000
+# unfix           2
+write_data      water_out.data

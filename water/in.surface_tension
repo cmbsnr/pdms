@@ -1,0 +1,139 @@
+# ============================================================================
+# LAMMPS 输入文件：Martini 粗粒化水的表面张力测量
+# ============================================================================
+# 力场：Martini 3 粗粒化力场（每个水珠代表4个水分子）
+# 参考值：300K 下水的实验表面张力 = 71.66 mN/m
+#
+# 表面张力计算方法（slab 法）：
+#   将水盒子在 z 方向拉伸，形成两个液-气界面（slab 几何结构）
+#   表面张力 γ = 0.5 * Lz * [P_zz - 0.5*(P_xx + P_yy)]
+#   其中 Lz 为 z 方向盒子长度，P_xx, P_yy, P_zz 为压力张量对角元
+#   因子 0.5 用于修正两个界面（每个界面贡献一半）
+#
+# 单位换算：
+#   1 atm·Å = 0.0101325 mN/m
+#   表面张力输出单位为 atm·Å，需乘以 0.0101325 转换为 mN/m
+# ============================================================================
+
+# -----------------------------------------------------
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real            # kcal/mol, Å, fs, atm
+dimension           3
+boundary            p p p           # 三维周期性边界
+atom_style          full            # 包含分子ID、原子类型、电荷等
+
+# -----------------------------------------------------
+# 2. 力场参数（Martini 3 水模型）—— 必须在 read_data 之前定义
+# -----------------------------------------------------
+# Martini 水珠（W 类型）的 Lennard-Jones 12-6 参数：
+#   ε = 1.1071 kcal/mol（≈ 4.63 kJ/mol）
+#   σ = 4.7 Å（≈ 0.47 nm）
+# 截断距离 = 12.0 Å，符合 Martini 标准
+# pair_style 必须在包含 Pair Coeffs 的 data 文件之前定义
+pair_style          lj/cut   12.0
+
+# -----------------------------------------------------
+# 3. 读取已平衡的水盒子数据
+# -----------------------------------------------------
+# 使用 NPT 平衡后的构型（300K, 1atm），密度接近实验值 ~1 g/cm³
+# water_out.data 已经包含 Pair Coeffs 段（从 write_data 输出），
+# 因此 pair_style 已在上方定义，pair_coeff 从 data 文件自动读取
+read_data           water_out.data
+
+# 手动设置pair_coeff（覆盖data文件中的值，确保与Martini力场一致）
+# 这一步在 read_data 后执行（read_data 定义了盒子尺寸）
+pair_coeff          1 1 1.1071 4.7
+
+# -----------------------------------------------------
+# 4. 创建 slab 几何结构
+# -----------------------------------------------------
+# 将 z 方向盒子延伸 3 倍，在水的上下两侧创建真空区域
+# 原始盒子 z 范围约 1.42 ~ 132.58 Å（Lz ≈ 131.16 Å）
+# 延伸后 Lz ≈ 393.5 Å，两侧各约 131 Å 真空
+# 使用 change_box 缩放 z 方向，原子坐标随之缩放
+change_box          all z scale 3.0
+
+# 重置所有原子的速度（change_box 后速度可能不物理）
+velocity            all create 300.0 4928459 dist uniform
+
+# -----------------------------------------------------
+# 5. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify        one 2000
+neighbor            1.0 bin
+neigh_modify        delay 0 every 1 check yes
+
+# -----------------------------------------------------
+# 6. 能量最小化
+# -----------------------------------------------------
+# 消除因盒子拉伸可能产生的不合理接触
+minimize            1.0e-4 1.0e-6 1000 10000
+
+# -----------------------------------------------------
+# 7. NVT 预平衡 —— 让水分子自组装成 slab 结构
+# -----------------------------------------------------
+# 在 NVT 系综下运行，水自发聚集形成液膜，两侧为真空
+# 温度 300K，阻尼参数 100 fs
+fix                 nvt_eq all nvt temp 300.0 300.0 100.0
+timestep            10.0            # Martini CG 可使用 10-40 fs 时间步长
+dump                traj_eq all custom 5000 dump.slab_eq.lammpstrj id type x y z
+thermo_style        custom step temp press vol lx ly lz pxx pyy pzz
+thermo              5000
+run                 50000           # 500 ps 预平衡
+unfix               nvt_eq
+undump              traj_eq
+
+# -----------------------------------------------------
+# 8. 正式采样 —— 表面张力计算
+# -----------------------------------------------------
+# 计算压力张量（6 个分量：xx, yy, zz, xy, xz, yz）
+compute             p_all all pressure thermo_temp
+
+# 定义表面张力变量
+# c_p_all[1] = Pxx, c_p_all[2] = Pyy, c_p_all[3] = Pzz
+# γ = 0.5 * Lz * (P_zz - 0.5*(P_xx + P_yy))
+# 对于 slab 法线沿 z 的几何结构，有两个液-气界面
+variable            pxx  equal c_p_all[1]
+variable            pyy  equal c_p_all[2]
+variable            pzz  equal c_p_all[3]
+# LAMMPS equal-style 变量表达式中不能包含空格！
+variable            p_lateral equal 0.5*(v_pxx+v_pyy)
+variable            p_normal  equal v_pzz
+variable            gamma_raw equal 0.5*lz*(v_p_normal-v_p_lateral)
+# 转换为 mN/m：1 atm·Å = 0.0101325 mN/m
+variable            gamma equal v_gamma_raw*0.0101325
+
+# 对表面张力进行时间平均（每 100 步采样，每 1000 步输出一次平均）
+fix                 ave_gamma all ave/time 100 10 1000 v_gamma v_gamma_raw &
+                    v_p_lateral v_p_normal file surface_tension_ts.txt
+
+# 沿 z 方向计算密度分布，确认 slab 几何结构
+compute             cc all chunk/atom bin/1d z lower 2.0
+fix                 dens all ave/chunk 100 10 1000 cc density/number &
+                    file density_z.txt
+
+# 热力学输出
+thermo_style        custom step temp press vol lx ly lz pxx pyy pzz v_gamma
+thermo              5000
+
+# NVT 正式采样（2 ns）
+fix                 nvt_prod all nvt temp 300.0 300.0 100.0
+dump                traj_prod all custom 10000 dump.slab_prod.lammpstrj id type x y z
+run                 200000
+unfix               nvt_prod
+undump              traj_prod
+
+# -----------------------------------------------------
+# 9. 输出最终结果
+# -----------------------------------------------------
+# 从 surface_tension_ts.txt 文件中提取平均表面张力
+# 将时间平均数据追加到单独的汇总文件
+print               "=============================================="
+print               "表面张力计算完成！"
+print               "时间序列数据保存在 surface_tension_ts.txt"
+print               "密度分布数据保存在 density_z.txt"
+print               "请运行 python3 analyze_st.py 进行分析"
+print               "=============================================="
+
+write_data          slab_final.data
