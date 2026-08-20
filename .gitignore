@@ -24,7 +24,12 @@ minp*.txt
 origin*.txt
 msd*.txt
 density_*.txt
+*_density.txt
 *_ts.txt
+avg.txt
+*_force.txt
+*_vel.txt
+x0.txt
 
 # LAMMPS structure snapshots are mixed input/output in the legacy layout.
 # Keep them ignored for now to prevent accidental multi-GB commits. A required,

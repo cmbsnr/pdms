@@ -95,6 +95,9 @@ The legacy layout mixes inputs and outputs in the same directories. Therefore:
   should be classified, while known large generated patterns such as `fz_map*`,
   `minp*`, `origin*`, `msd*`, density profiles, and time-series files remain
   ignored.
+- generic `avg.txt` files remain ignored because the current copies are generated
+  placeholders or unnamed reductions. Rename a reviewed result descriptively before
+  adding it, for example `gyration_summary.csv`.
 - existing tracked files are not untracked by changing `.gitignore`.
 - no historical commit is rewritten by this policy update.
 
