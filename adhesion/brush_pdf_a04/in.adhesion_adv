@@ -1,0 +1,72 @@
+variable            name string ${input_name}
+variable            aint equal 0.4
+shell               mkdir ${name}
+log                 ${name}/log.adhesion_adv
+units               metal
+dimension           3
+boundary            p p f
+atom_style          full
+
+variable            dt equal 0.002
+timestep            ${dt}
+
+# 参数设置
+variable            k equal "v_aint * 0.7337 / 23.06"  #定义压头与PDMS之间的LJ势的ε参数，单位为ev
+variable            indent equal -0.25       #压痕速度，Å/ps
+variable            minus_indent equal "v_indent * -1"
+
+# 定义键、角、二面角势
+bond_style          harmonic
+angle_style         harmonic
+dihedral_style      harmonic
+read_data           ${name}.data
+pair_style          hybrid tersoff lj/cut 12.0
+pair_coeff          * * tersoff SiC.tersoff NULL C
+special_bonds       lj 0.0 0.0 0.5
+pair_coeff          1 1 lj/cut 0.0318 5.1
+pair_coeff          1 2 lj/cut ${k} 5.1
+change_box          all z delta 0.0 50.0 units box
+
+neighbor            0.2 bin
+neigh_modify        delay 0 every 1 check yes
+
+group               indenter type 2
+group               substrate type 1
+group               bottom id <= 9600
+group               mobile subtract substrate bottom
+compute             pdmsTemp substrate temp
+compute             indenterTemp indenter temp
+compute             pdmske substrate ke
+compute             indenterke indenter ke
+compute             fz indenter group/group substrate
+
+fix                 spring_bottom bottom spring/self 1.0
+fix                 zwallslo all wall/reflect zlo EDGE
+fix                 zwallshi all wall/reflect zhi EDGE
+dump                adv all custom 1000 ${name}/dump.adhesion_adv.lammpstrj id type x y z vx vy vz
+
+variable            depth equal 'step * v_indent * dt * (-1)'
+variable            force equal "c_fz[3] * 1.602" # 将力转换为nN，1ev/A = 1.602nN
+variable            forcePermeter equal "v_force / (lx * 10)"
+fix                 3 substrate nvt temp 300.0 300.0 0.1
+fix                 4 indenter move linear 0.0 0.0 ${indent} units box
+thermo_style        custom step atoms temp pe ke etotal density vol lx ly lz v_depth c_fz[1] c_fz[2] c_fz[3] c_pdmsTemp c_indenterTemp c_pdmske c_indenterke v_force v_forcePermeter
+thermo              10
+fix                 out all ave/time 10 100 1000 v_depth v_force v_forcePermeter file ${name}/force_10_100_1000.csv
+run                 170000
+variable            depth0 equal ${depth}
+undump              adv
+write_data          ${name}/adhension_middle.data
+unfix               out
+
+reset_timestep      0
+compute             myChunk substrate chunk/atom bin/2d y lower 3 z lower 3 units box
+fix                 fzmap1 substrate ave/chunk 1000 1 1000 myChunk fz norm none file ${name}/fz_map_1000_1_1000.txt
+fix                 fzmap2 substrate ave/chunk 10 100 1000 myChunk fz norm none file ${name}/fz_map_10_100_1000.txt
+dump                ret all custom 1000 ${name}/dump.adhesion_ret.lammpstrj id type x y z vx vy vz
+variable            depth equal 'v_depth0 + step * v_minus_indent * dt * (-1)'
+unfix               4
+fix                 5 indenter move linear 0.0 0.0 ${minus_indent} units box
+fix                 out all ave/time 10 100 1000 v_depth v_force v_forcePermeter append ${name}/force_10_100_1000.csv
+run                 250000
+write_data          ${name}/adhension_final.data

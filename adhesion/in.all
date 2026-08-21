@@ -1,0 +1,13 @@
+units               real
+dimension           3
+boundary            p p s
+atom_style          full
+log                 log.All
+
+atom_style          full
+neighbor            2.0 bin
+neigh_modify        delay 0 every 1 check yes
+read_data           pdms50_pps.data extra/atom/types 1
+read_data           indenter_final.data add append offset 1 0 0 0 0 shift 80.0 80.0 150.0
+
+write_data          adhension.data

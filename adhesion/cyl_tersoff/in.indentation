@@ -1,0 +1,37 @@
+units           metal
+dimension       3
+boundary        p p p
+atom_style      full
+log             log.indentation
+# ---------- 金刚石晶格 ----------
+lattice         diamond 3.567
+region          whole block -40 40 -40 40 -40 40 units box
+create_box      1 whole
+
+# ---------- 定义几何参数 ----------
+variable        R equal 25.0
+variable        H equal 35.0
+
+# ---------- 圆柱 ----------
+region          cylinder_part cylinder x 0.0 0.0 ${R} -${H} ${H} units box
+
+# ---------- 填充原子 ----------
+create_atoms    1 region cylinder_part
+
+
+
+pair_style      tersoff
+pair_coeff      * * SiC.tersoff C
+mass            1 12.011
+write_data      indenter_ini.data
+neighbor        0.1 bin
+neigh_modify    every 1 delay 0 check yes
+thermo          100
+thermo_style    custom step atoms temp pe ke etotal density vol lx ly lz
+
+dump            1 all atom 100 dump.indenter.lammpstrj
+# minimize        1e-6 1e-8 1000 10000
+# velocity        all create 300.0 4928459
+fix             1 all npt temp 300.0 300.0 10.0 iso 1.0 1.0 1000.0
+run             100000
+write_data      indenter_final.data

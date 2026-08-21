@@ -1,0 +1,49 @@
+# 1. 初始化设置
+# -----------------------------------------------------
+units               real
+dimension           3
+boundary            p p s
+atom_style          full
+log                 log.pps
+
+
+# -----------------------------------------------------
+# 2. 力场参数设置（Martini 3参数）
+# -----------------------------------------------------
+# 定义非键相互作用（示例：Lennard-Jones势，截断距离可参考Martini 3常用取值）
+pair_style lj/cut   12.0
+special_bonds       lj 0.0 0.0 0.5
+
+# 定义键、角、二面角势（示例参数，实际参数请参考相关文献）
+bond_style          harmonic
+
+angle_style         harmonic
+
+dihedral_style      harmonic
+
+
+# 读取包含PDMS分子结构的data文件
+read_data           pdms50_sss.data
+
+# -----------------------------------------------------
+# 3. 邻域列表设置
+# -----------------------------------------------------
+neigh_modify        one 1000
+neighbor            0.5 bin
+neigh_modify        delay 0 every 1 check yes
+minimize            1.0e-4 1.0e-6 10000 100000
+# npt系综下驰豫
+compute             pressperatom all stress/atom NULL
+compute             peperatom all pe/atom
+compute             pairperatom all pe/atom pair
+compute             bondperatom all pe/atom bond
+compute             angleperatom all pe/atom angle
+compute             dihedralperatom all pe/atom dihedral
+dump                min all custom 10000 dump.pdms_pps.lammpstrj id type x y z vx vy vz c_pressperatom[1] c_pressperatom[2] c_pressperatom[3] c_peperatom c_pairperatom c_bondperatom c_angleperatom c_dihedralperatom
+# fix                 zwallslo all wall/reflect zlo EDGE
+# fix                 zwallshi all wall/reflect zhi EDGE
+fix                 1 all nvt temp 300 300 50
+thermo_style        custom step temp density press etotal pxx pyy pzz lx ly lz
+thermo              10000
+run                 2000000
+write_data          pdms50_pps.data
