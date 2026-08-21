@@ -1,0 +1,65 @@
+# 控制实验: 纯NVE水珠(真空中, 无刷层无热浴), 仅加恒力驱动
+# 目的: 验证 Fdrive -> 质心加速度 的单位换算 (a = F*ftm2v/M)
+# 期望: Fdrive=100, M=9150*72, a = 100*1.0364e-4/658800 = 1.57e-8 A/fs^2
+variable        file_name string ${name}
+log             ${file_name}/${file_name}_control_nve.log
+
+units           real
+dimension       3
+boundary        p p f
+atom_style      full
+
+pair_style      lj/cut   12.0
+special_bonds   lj 0.0 0.0 0.5
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  harmonic
+
+read_data       ${file_name}/${file_name}_water_eq.data
+
+pair_coeff      1 1 0.7337 5.1
+pair_coeff      1 2 0.5762 4.65
+pair_coeff      2 2 1.1071 4.7
+bond_coeff      1 13.243 4.48
+angle_coeff     1 5.48 86.0
+dihedral_coeff  1 0.3346 1 1
+
+change_box      all z delta 0.0 40.0 units box
+
+# 只保留水珠, 删除刷层
+group           water type 2
+group           pdms  type 1
+delete_atoms    group pdms
+reset_ids
+
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+velocity        water create 300 4928459
+velocity        water zero linear
+
+variable        Nw     equal count(water)
+variable        Fdrive equal 100.0
+variable        fwater equal v_Fdrive/v_Nw
+
+# 纯NVE + 驱动, 无任何热浴/摩擦
+fix             integrate all nve
+fix             drive_water water addforce v_fwater 0.0 0.0
+fix             wall_zlo all wall/reflect zlo EDGE
+fix             wall_zhi all wall/reflect zhi EDGE
+
+compute         pav    water property/atom vx vy vz
+compute         vxsum  water reduce sum c_pav[1]
+variable        vxw    equal c_vxsum/v_Nw
+variable        xcmw   equal xcm(water,x)
+compute         patom  water property/atom fx fy fz
+compute         fwat_x water reduce sum c_patom[1]
+
+fix             out_vel water ave/time 50 20 1000 v_vxw v_xcmw c_fwat_x file ${file_name}/${file_name}_control_vel.txt
+thermo_style    custom step temp v_vxw v_xcmw c_fwat_x
+thermo          1000
+timestep        1
+run             20000
+
+variable        v1 equal v_vxw
+print           "CONTROL_END  vx=${v1}  Nw=${Nw}  (期望 a=F*ftm2v/M=1.573e-8; 若vx线性增长, 则换算正确)"

@@ -1,0 +1,72 @@
+# 诊断: 驱动阶段各分组温度 + 能量收支 (判断刷层过热原因)
+variable        file_name string ${name}
+log             ${file_name}/${file_name}_diag.log
+
+units           real
+dimension       3
+boundary        p p f
+atom_style      full
+
+pair_style      lj/cut   12.0
+special_bonds   lj 0.0 0.0 0.5
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  harmonic
+
+read_data       ${file_name}/${file_name}_water_eq.data
+
+pair_coeff      1 1 0.7337 5.1
+pair_coeff      1 2 0.5762 4.65
+pair_coeff      2 2 1.1071 4.7
+bond_coeff      1 13.243 4.48
+angle_coeff     1 5.48 86.0
+dihedral_coeff  1 0.3346 1 1
+
+change_box      all z delta 0.0 40.0 units box
+
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+group           water type 2
+group           pdms  type 1
+group           bottom id <= 9600
+
+velocity        all create 300 4928459
+velocity        water zero linear
+
+variable        Nw     equal count(water)
+variable        Fdrive equal 100.0
+variable        fwater equal v_Fdrive/v_Nw
+
+compute         tcomw  water temp/com
+compute         tpdms  pdms temp
+compute         tbot   bottom temp
+compute         ttot   all temp
+
+fix             integrate all nve
+fix             therm_water water langevin 300.0 300.0 100.0 12345 zero yes
+fix_modify      therm_water temp tcomw
+fix             therm_pdms  pdms  langevin 300.0 300.0 100.0 6789
+fix             spring_bottom bottom spring/self 1.0
+fix             wall_zlo all wall/reflect zlo EDGE
+fix             wall_zhi all wall/reflect zhi EDGE
+
+compute         pav    water property/atom vx vy vz
+compute         vxsum  water reduce sum c_pav[1]
+variable        vxw    equal c_vxsum/v_Nw
+variable        xcmw   equal xcm(water,x)
+compute         patom  water property/atom fx fy fz
+compute         fwat_x water reduce sum c_patom[1]
+variable        fric_x equal c_fwat_x-v_Nw*v_fwater
+compute         ppdms  pdms property/atom fx fy fz
+compute         fpdms_x pdms reduce sum c_ppdms[1]
+
+thermo_style    custom step c_ttot c_tpdms c_tcomw c_tbot v_vxw c_fwat_x v_fric_x c_fpdms_x pe ke ebond eangle edihed etotal
+thermo          2000
+timestep        1
+
+run             2000
+fix             drive_water water addforce v_fwater 0.0 0.0
+run             30000
+
+print           "DIAG_END Ttot=${ctot} Tpdms=${ctpdms} Tcomw=${ctcomw} Tbot=${ctbot} vxw=${vxw}"

@@ -1,0 +1,178 @@
+# LAMMPS输入文件 - 水滴在PDMS刷层上的摩擦力测量（恒力驱动法）
+# ------------------------------------------------------------------
+# 原理:
+#   对水珠整体施加恒定总驱动力 Fdrive (x方向, 平均分配到每个水珠原子),
+#   若刷层摩擦能在某速度下与驱动力平衡, 则达到终端速度 v_ss,
+#   此时 摩擦力 = Fdrive, 摩擦系数 mu = Fdrive/v_ss。
+#
+# 用法:
+#   lmp_mpi -var name <前缀> -in in.friction
+#   例 (在 friction/32/ 目录下):
+#   lmp_mpi -var name pdms_DFS_CB2_0.30B1_0.15B_0.02k_0.1000T300N1_32n1_960N2_0n2_0N3_0n3_0z_95NAll_30720crosslinkfinal_brush_out -in in.friction
+#
+# 实测结论 (960刷层 + 9150颗水珠, 平衡构型实测) —— 重要:
+#   1. 单位换算: real单位 ftm2v = 4.184e-4, 质心加速度 a = F*ftm2v/M,
+#      M = Nw*72 (水珠), F 单位 kcal/mol/A。
+#   2. 本体系摩擦为"速度弱化": 静摩擦 ~90-100 (水珠被钉扎不动),
+#      滑动后摩擦降到 ~10-15。因此:
+#      * Fdrive < ~90: 水珠始终钉扎, 完全不动 (原设 0.001 就是这种情形,
+#        不是"噪声太小", 而是根本推不动);
+#      * Fdrive > ~90: 一旦滑动, 摩擦(10-15) < 驱动力, 净力恒正,
+#        水珠持续加速, 不会达到终端速度 (实测200ps后 ~820 m/s,
+#        远超物理合理速度, 且刷层被摩擦加热到 ~600K)。
+#   3. 所以对速度弱化摩擦体系, 恒力法测不出"终端速度", 只适合测
+#      **静摩擦(脱钉阈值)**: 扫描 Fdrive 找水珠开始移动的临界值 (≈90-100)。
+#   4. 要测"动摩擦-速度曲线", 请改用恒速拖曳法 (in.trap):
+#      活动谐振陷阱把质心速度钳制在 vd, 稳态牵引力 = 该速度下摩擦力。
+# ------------------------------------------------------------------
+
+variable        file_name string ${name}
+log             ${file_name}/${file_name}_friction.log
+
+units           real
+dimension       3
+boundary        p p f
+atom_style      full
+
+# ------------------------------------------------------------------
+# 1. 力场参数 (Martini 3: 1=PDMS, 2=水珠W)
+#    (样式必须在 read_data 之前定义, 因为data文件含 Coeffs 段)
+# ------------------------------------------------------------------
+pair_style      lj/cut   12.0
+special_bonds   lj 0.0 0.0 0.5
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  harmonic
+
+# ------------------------------------------------------------------
+# 2. 读入已平衡的"刷层+水珠"构型 (由 in.water 平衡生成 ..._water_eq.data)
+#    data文件已含1-1,2-2对势系数; 1-2交叉项在这里补充
+# ------------------------------------------------------------------
+read_data       ${file_name}/${file_name}_water_eq.data
+
+pair_coeff      1 1 0.7337 5.1
+pair_coeff      1 2 0.5762 4.65
+pair_coeff      2 2 1.1071 4.7
+bond_coeff      1 13.243 4.48
+angle_coeff     1 5.48 86.0
+dihedral_coeff  1 0.3346 1 1
+
+# 冻结盒参数
+variable        Lx equal $(xhi-xlo)
+variable        Ly equal $(yhi-ylo)
+
+# 平衡态水珠顶部几乎顶到盒顶(186≈zhi), 这里给z方向多留40A净空,
+# 避免测量中水珠与上壁接触产生虚假作用力
+change_box      all z delta 0.0 40.0 units box
+
+# ------------------------------------------------------------------
+# 3. 邻域列表设置
+# ------------------------------------------------------------------
+neigh_modify    one 1000
+neighbor        1 bin
+neigh_modify    delay 0 every 1 check yes
+
+# ------------------------------------------------------------------
+# 4. 分组
+# ------------------------------------------------------------------
+group           water type 2
+group           pdms  type 1
+group           bottom id <= 9600     # 刷层底部接枝原子(锚定点), 弹簧固定
+
+# 重新初始化300K热速度, 并清零水珠整体质心动量:
+# 这样水珠初始漂移速度=0, 测量到的漂移完全来自驱动力
+velocity        all create 300 4928459
+velocity        water zero linear
+
+# ------------------------------------------------------------------
+# 5. 恒定驱动力 (恒力驱动法核心)
+#    Nw     = 水珠原子总数
+#    Fdrive = 施加在整滴水上的总驱动力 (kcal/mol/A, real单位)
+#    fwater = 每颗水珠平均受力 = Fdrive/Nw
+# ------------------------------------------------------------------
+variable        Nw     equal count(water)
+variable        Fdrive equal 100.0
+variable        fwater equal v_Fdrive/v_Nw
+
+# ------------------------------------------------------------------
+# 6. 时间积分与温度控制
+#    - 所有原子:      fix nve 负责推进位置/速度(必须有积分器!)
+#    - 水珠(water):  Langevin 300K, 温度计算用 temp/com (扣除质心漂移),
+#                    再加 zero yes (移除温度计对水珠整体的净随机力)。
+#                    这样: (1) 内部热运动被控制在300K(抑制驱动焦耳热),
+#                    (2) 温度计不拖动/不制动水珠质心, 漂移只由驱动力
+#                    和刷层摩擦决定。测量结果更干净。
+#    - 刷层(pdms):   Langevin 300K (基底充当热浴, 提供摩擦耗散)
+#    - 底部接枝点:   spring/self 锚定在基底
+#    - z方向反射墙:  防止原子逃逸/周期性缠绕
+# ------------------------------------------------------------------
+compute         tcomw water temp/com
+fix             integrate all nve
+fix             therm_water water langevin 300.0 300.0 100.0 12345 zero yes
+fix_modify      therm_water temp tcomw
+fix             therm_pdms  pdms  langevin 300.0 300.0 100.0 6789
+fix             spring_bottom bottom spring/self 1.0
+
+fix             wall_zlo all wall/reflect zlo EDGE
+fix             wall_zhi all wall/reflect zhi EDGE
+
+# ------------------------------------------------------------------
+# 7. 测量量
+#    本版LAMMPS的 compute com 返回质心坐标(非速度), 故用下面的方式:
+#    v_vxw/v_vyw/v_vzw = 水珠质心速度 (所有水珠质量相同=72,
+#                        质心速度=速度平均, reduce求和后除以Nw)
+#    v_xcmw/v_ycmw/v_zcmw = 水珠质心坐标 (检查是否跑出盒子/缠绕)
+#    c_fwat_x     = 水珠受到的x方向总力(含驱动力, 有langevin随机力噪声)
+#    v_fric_x     = 水珠受到的非驱动力 = 刷层摩擦阻力 (稳态应约等于 -Fdrive)
+#    c_tcomw      = 水珠热运动温度 (已扣质心漂移)
+# ------------------------------------------------------------------
+compute         pav    water property/atom vx vy vz
+compute         vxsum  water reduce sum c_pav[1]
+compute         vysum  water reduce sum c_pav[2]
+compute         vzsum  water reduce sum c_pav[3]
+variable        vxw    equal c_vxsum/v_Nw
+variable        vyw    equal c_vysum/v_Nw
+variable        vzw    equal c_vzsum/v_Nw
+compute         patom  water property/atom fx fy fz
+compute         fwat_x water reduce sum c_patom[1]
+variable        fric_x equal c_fwat_x-v_Nw*v_fwater
+variable        xcmw   equal xcm(water,x)
+variable        ycmw   equal xcm(water,y)
+variable        zcmw   equal xcm(water,z)
+
+fix             out_vel water ave/time 100 10 1000 v_vxw v_vyw v_vzw v_xcmw v_ycmw v_zcmw file ${file_name}/${file_name}_friction_vel.txt
+fix             out_frc water ave/time 100 10 1000 c_fwat_x v_fric_x c_tcomw file ${file_name}/${file_name}_friction_force.txt
+
+thermo_style    custom step temp c_tcomw c_fwat_x v_fric_x v_vxw v_vyw v_vzw
+thermo          5000
+dump            traj all custom 5000 ${file_name}/dump.${file_name}_friction.lammpstrj id type x y z
+timestep        1
+
+# ------------------------------------------------------------------
+# 8. 运行: 先短预平衡(不施加驱动力), 再开始恒力驱动测量
+#    N_equi  预平衡步数
+#    N_drive 驱动测量步数
+# ------------------------------------------------------------------
+variable        N_equi  equal 10000
+variable        N_drive equal 200000
+
+run             ${N_equi}
+
+fix             drive_water water addforce v_fwater 0.0 0.0
+run             ${N_drive}
+
+# ------------------------------------------------------------------
+# 9. 结束输出 (便于后续分析)
+#    本体系摩擦速度弱化, 无终端速度:
+#      * 若 Fdrive < ~90 (静摩擦): 水珠全程钉扎, vxw≈0, 说明驱动力不够脱钉;
+#      * 若 Fdrive >= ~90: 水珠脱钉后持续加速, vxw单调增大且刷层升温,
+#        不存在"摩擦力=驱动力"的稳态。
+#    恒力法真正的测量量是**静摩擦(脱钉阈值)**: 扫描 Fdrive, 观察
+#    vxw从0开始显著非零的临界值即为静摩擦。动摩擦曲线请用 in.trap。
+#    下面的 print 只是当前瞬时 vx, 仅供参考。
+# ------------------------------------------------------------------
+variable        vss equal v_vxw
+variable        Ffric equal v_Fdrive
+print           "CURRENT_VX=${vss}  Fdrive=${Fdrive}  Nw=${Nw}  (恒力法测静摩擦脱钉阈值: 扫Fdrive找vxw开始非零的临界值; 动摩擦曲线见in.trap)"
+
+write_data      ${file_name}/${file_name}_friction_end.data
