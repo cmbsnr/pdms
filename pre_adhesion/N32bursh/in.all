@@ -1,0 +1,14 @@
+shell               cd ${name}
+units               metal
+dimension           3
+boundary            p p s
+atom_style          full
+log                 log.All
+
+atom_style          full
+neighbor            2.0 bin
+neigh_modify        delay 0 every 1 check yes
+read_data           ${name}_brush_out.data extra/atom/types 1
+read_data           indenter_final.data add append offset 1 0 0 0 0 shift 0.0 24 150.0
+
+write_data          adhension_${name}.data
