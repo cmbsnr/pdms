@@ -25,6 +25,9 @@ dihedral_style      harmonic
 # 读取包含PDMS分子结构的data文件
 read_data           pdms50_nvt.data
 
+group               pdms id 1:10000
+delete_atoms        group pdms
+
 variable            linear equal vdisplace(171,-0.0006)
 fix                 xwallslo all wall/reflect xlo EDGE
 fix                 ywallslo all wall/reflect ylo EDGE
@@ -43,21 +46,21 @@ neigh_modify        delay 0 every 1 check yes
 # 4. 能量最小化与预平衡
 # -----------------------------------------------------
 minimize            1.0e-4 1.0e-6 10000 100000
-velocity            all create 300 4928459
+# velocity            all create 300 4928459
 compute             pressperatom all stress/atom NULL
 compute             peperatom all pe/atom
 compute             pairperatom all pe/atom pair
 compute             bondperatom all pe/atom bond
 compute             angleperatom all pe/atom angle
 compute             dihedralperatom all pe/atom dihedral
-# npt系综下驰豫 
+# npt系综下驰豫
 dump                min all custom 10000 dump.pdms_min.lammpstrj id type x y z vx vy vz c_pressperatom[1] c_pressperatom[2] c_pressperatom[3] c_peperatom c_pairperatom c_bondperatom c_angleperatom c_dihedralperatom
 fix                 1 all nvt temp 300 300 50
 thermo_style        custom step temp density press etotal pxx pyy pzz lx ly lz
 thermo              10000
 run                 60000
 unfix               1
-undump              min          
+undump              min
 write_data          pdms50_sss.data
 unfix               xwallshi
 unfix               xwallslo
@@ -68,6 +71,6 @@ unfix               zwallslo
 fix                 2 all nvt temp 300 300 50
 thermo_style        custom step temp density press etotal pxx pyy pzz lx ly lz
 thermo              10000
-run                 100000
+run                 500000
 unfix               2
-write_data          pdms50_sss.data
+write_data          pdms50_sss.data nocoeff
