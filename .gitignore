@@ -11,6 +11,7 @@ log.lammps
 log.lammps.*
 log.*.lammps
 log.*
+*.log
 screen.*
 slurm-*.out
 *.out
@@ -25,6 +26,7 @@ origin*.txt
 msd*.txt
 density_*.txt
 *_density.txt
+density.txt
 *_ts.txt
 avg.txt
 *_force.txt
